@@ -1,4 +1,4 @@
-import type { Monitor, MonitorStatusResponse, Notification } from "@/types/index.js";
+import type { Monitor, MonitorStatusResponse, Notification, Incident } from "@/types/index.js";
 import type { NotificationMessage } from "@/types/notificationMessage.js";
 import { IMonitorsRepository, INotificationsRepository } from "@/repositories/index.js";
 import { INotificationProvider } from "./notificationProviders/INotificationProvider.js";
@@ -14,6 +14,7 @@ export interface INotificationsService {
 	updateById(id: string, teamId: string, updateData: Partial<Notification>): Promise<Notification>;
 	deleteById: (id: string, teamId: string) => Promise<Notification>;
 	handleNotifications: (monitor: Monitor, monitorStatusResponse: MonitorStatusResponse, decision: MonitorActionDecision) => Promise<boolean>;
+	sendEscalationNotification: (monitor: Monitor, notification: Notification, incident: Incident, delayMinutes: number) => Promise<boolean>;
 
 	sendTestNotification: (notification: Partial<Notification>) => Promise<boolean>;
 	testAllNotifications: (notificationIds: string[]) => Promise<boolean>;
@@ -203,5 +204,46 @@ export class NotificationsService implements INotificationsService {
 		const deleted = await this.notificationsRepository.deleteById(id, teamId);
 		await this.monitorsRepository.removeNotificationFromMonitors(id);
 		return deleted;
+	};
+
+	sendEscalationNotification = async (
+		monitor: Monitor,
+		notification: Notification,
+		incident: Incident,
+		delayMinutes: number
+	): Promise<boolean> => {
+		try {
+			const incidentDurationMinutes = Math.floor(
+				(Date.now() - new Date(incident.startTime).getTime()) / (1000 * 60)
+			);
+			const incidentDurationHours = Math.floor(incidentDurationMinutes / 60);
+			const remainingMinutes = incidentDurationMinutes % 60;
+
+			let durationStr = "";
+			if (incidentDurationHours > 0) {
+				durationStr = `${incidentDurationHours}h ${remainingMinutes}m`;
+			} else {
+				durationStr = `${incidentDurationMinutes}m`;
+			}
+
+			const escalationMessage: NotificationMessage = {
+				title: `🚨 ESCALATION: ${monitor.name} - Still Down`,
+				body: `Incident has been ongoing for ${durationStr} without acknowledgment.`,
+				status: "down",
+				escalated: true,
+				monitorURL: `/uptime/${monitor.id}`,
+				incidentURL: `/incidents/${incident.id}`,
+			};
+
+			return await this.send(notification, monitor, {} as MonitorStatusResponse, {}, escalationMessage);
+		} catch (error: unknown) {
+			this.logger.error({
+				message: `Error sending escalation notification: ${error instanceof Error ? error.message : "Unknown error"}`,
+				service: SERVICE_NAME,
+				method: "sendEscalationNotification",
+				stack: error instanceof Error ? error.stack : undefined,
+			});
+			return false;
+		}
 	};
 }

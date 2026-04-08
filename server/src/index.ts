@@ -22,6 +22,9 @@ const startApp = async () => {
 	const __dirname = path.dirname(__filename);
 	const openApiSpec = JSON.parse(fs.readFileSync(path.join(__dirname, "../openapi.json"), "utf8"));
 	const frontendPath = path.join(__dirname, "..", "public");
+	
+	// Check if frontend path exists (only in production)
+	const frontendExists = fs.existsSync(frontendPath);
 
 	// Create settings service (env only — DB repository injected after connect)
 	const settingsService = new SettingsService(env);
@@ -41,6 +44,7 @@ const startApp = async () => {
 		controllers,
 		envSettings,
 		frontendPath,
+		frontendExists,
 		openApiSpec,
 	});
 

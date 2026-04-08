@@ -95,6 +95,7 @@ import {
 	MongoRecoveryTokensRepository,
 	MongoNotificationsRepository,
 	MongoIncidentsRepository,
+	MongoEscalationsRepository,
 	MongoTeamsRepository,
 	MongoMaintenanceWindowsRepository,
 	MongoSettingsRepository,
@@ -122,6 +123,7 @@ import {
 	ISettingsRepository,
 	INotificationsRepository,
 	IIncidentsRepository,
+	IEscalationsRepository,
 	ITeamsRepository,
 	IMaintenanceWindowsRepository,
 } from "@/repositories/index.js";
@@ -176,7 +178,6 @@ export const initializeServices = async ({
 	settingsService: ISettingsService;
 }): Promise<InitializedServices> => {
 	// Create DB
-
 	const dbType = envSettings.dbType;
 
 	let db: IDb | null = null;
@@ -204,11 +205,11 @@ export const initializeServices = async ({
 	let settingsRepository: ISettingsRepository;
 	let notificationsRepository: INotificationsRepository;
 	let incidentsRepository: IIncidentsRepository;
+	let escalationsRepository: IEscalationsRepository;
 	let teamsRepository: ITeamsRepository;
 	let maintenanceWindowsRepository: IMaintenanceWindowsRepository;
 
 	// Repositories
-
 	if (dbType === "mongodb") {
 		monitorsRepository = new MongoMonitorsRepository();
 		checksRepository = new MongoChecksRepository(logger);
@@ -221,6 +222,7 @@ export const initializeServices = async ({
 		settingsRepository = new MongoSettingsRepository();
 		notificationsRepository = new MongoNotificationsRepository();
 		incidentsRepository = new MongoIncidentsRepository();
+		escalationsRepository = new MongoEscalationsRepository();
 		teamsRepository = new MongoTeamsRepository();
 		maintenanceWindowsRepository = new MongoMaintenanceWindowsRepository();
 	} else {
@@ -241,6 +243,7 @@ export const initializeServices = async ({
 		incidentsRepository = new TimescaleIncidentsRepository(pool);
 		teamsRepository = new TimescaleTeamsRepository(pool);
 		maintenanceWindowsRepository = new TimescaleMaintenanceWindowsRepository(pool);
+		throw new AppError({ message: "Escalations repository is not implemented for timescaledb", status: 500 });
 	}
 
 	// Inject settings repository into settings service (now that DB is connected)
@@ -268,6 +271,7 @@ export const initializeServices = async ({
 		grpcProvider,
 		webSocketProvider,
 	]);
+
 	const emailService = new EmailService(settingsService, fs, path, compile, mjml2html, nodemailer, logger);
 
 	const notificationMessageBuilder = new NotificationMessageBuilder();
@@ -331,7 +335,9 @@ export const initializeServices = async ({
 		checksRepository,
 		incidentsRepository,
 		geoChecksService,
-		geoChecksRepository
+		geoChecksRepository,
+		escalationsRepository,
+		notificationsRepository
 	);
 
 	const superSimpleQueue = await SuperSimpleQueue.create(logger, superSimpleQueueHelper, monitorsRepository);

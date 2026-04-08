@@ -38,6 +38,9 @@ export * from "@/repositories/incidents/IIncidentsRepository.js";
 export { default as MongoIncidentsRepository } from "@/repositories/incidents/MongoIncidentsRepository.js";
 export { TimescaleIncidentsRepository } from "@/repositories/incidents/TimescaleIncidentsRepository.js";
 
+export * from "@/repositories/escalations/IEscalationsRepository.js";
+export { default as MongoEscalationsRepository } from "@/repositories/escalations/MongoEscalationsRepository.js";
+
 export * from "@/repositories/teams/ITeamsRepository.js";
 export { default as MongoTeamsRepository } from "@/repositories/teams/MongoTeamsRepository.js";
 export { TimescaleTeamsRepository } from "@/repositories/teams/TimescaleTeamsRepository.js";
